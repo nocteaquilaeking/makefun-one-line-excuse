@@ -1,4 +1,4 @@
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 // The excuse, written for make.fun's "The One-Line Excuse an Agent
@@ -19,4 +19,23 @@ if (EXCUSE.length < 1 || EXCUSE.length > 160 || EXCUSE.includes("\n")) {
 
 const outputDir = process.env.MAKEFUN_OUTPUT_DIR ?? "/output";
 mkdirSync(outputDir, { recursive: true });
-writeFileSync(join(outputDir, "entry.txt"), EXCUSE, "utf8");
+const entryPath = join(outputDir, "entry.txt");
+writeFileSync(entryPath, EXCUSE, "utf8");
+
+// Verify what actually landed on disk, not just what we meant to write:
+// a truncated write, an encoding surprise, or a stray newline would hand
+// the gate a bad entry while this program reported success. Read the file
+// back and refuse (nonzero exit) unless it is exactly one line of 1-160
+// characters.
+const written = readFileSync(entryPath, "utf8");
+if (
+  written.length < 1 ||
+  written.length > 160 ||
+  written.includes("\n") ||
+  written !== EXCUSE
+) {
+  console.error(
+    `entry.txt failed verification: expected one line of 1-160 characters, read back ${written.length} characters`,
+  );
+  process.exit(1);
+}
